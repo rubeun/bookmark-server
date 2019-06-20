@@ -18,6 +18,8 @@
 #     long URI.
 
 import os
+import threading
+from socketserver import ThreadingMixIn
 import http.server
 import requests
 from urllib.parse import unquote, parse_qs
@@ -62,6 +64,11 @@ def CheckURI(uri, timeout=5):
     except requests.RequestException:
         return False
 
+# Helper mixin class to allow HTTPServer to have 2 concurrent tasks running
+class ThreadHTTPServer(ThreadingMixIn, http.server.HTTPServer):
+    "This is an HTTPServer that supports thread-based concurrency."
+
+# URL Shortener class
 class Shortener(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         # A GET request will either be for / (the root path) or for /some-name.
@@ -130,7 +137,7 @@ class Shortener(http.server.BaseHTTPRequestHandler):
             self.wfile.write("Invalid URI!".encode())
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8800))   # Use PORT available.
+    port = int(os.environ.get('PORT', 8800))   # Use port 8800 if available.
     server_address = ('', port)
-    httpd = http.server.HTTPServer(server_address, Shortener)
+    httpd = ThreadHTTPServer(server_address, Shortener)
     httpd.serve_forever()
